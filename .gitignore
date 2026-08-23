@@ -5,6 +5,8 @@ target/
 !**/src/test/**/target/
 
 .env
+*.local.txt
+deploy-secrets*
 
 # Local dev profile is where real secrets tend to get hand-edited during development
 # (DB password, Brevo API key, admin password) — never track it. application.properties
