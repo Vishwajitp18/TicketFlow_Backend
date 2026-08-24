@@ -90,11 +90,31 @@ Any endpoint with `page`/`size` query params returns a Spring `Page` object:
 | Booking `status` | `HELD`, `CONFIRMED`, `CANCELLED`, `EXPIRED` |
 | Waitlist entry `status` | `WAITING`, `OFFERED`, `FULFILLED`, `EXPIRED`, `CANCELLED` |
 
-### 1.5 Dates/times
+### 1.5 Dates/times — everything is UTC, no exceptions
 
-`showDate`: `"YYYY-MM-DD"` · `showTime`: `"HH:mm:ss"` · timestamps (`holdExpiresAt`,
-`joinedAt`, `timeStamp`): `"YYYY-MM-DDTHH:mm:ss.SSS"` (no timezone suffix — server runs in
-`Asia/Kolkata`).
+The backend computes, stores, and returns **UTC only** — this is pinned at the JVM level
+(`TimeZone.setDefault(UTC)`) specifically so it's identical regardless of which machine or
+region the app runs on. It does not infer a timezone from the request. **All conversion to
+a viewer's local time is a frontend responsibility.**
+
+| Field(s) | Type | Format | Example | Contains a zone marker? |
+|---|---|---|---|---|
+| `timeStamp` (every envelope), `holdExpiresAt`, `joinedAt` | `LocalDateTime` | `"YYYY-MM-DDTHH:mm:ss.SSS"` | `"2026-08-24T06:32:06.412"` | **No** — no `Z`, no offset |
+| `showDate` / `showTime` | `LocalDate` / `LocalTime` | `"YYYY-MM-DD"` / `"HH:mm:ss"` | `"2026-09-01"` / `"19:00:00"` | No zone concept at all |
+
+Because there's no `Z` suffix, parsing a timestamp field with plain `new Date(str)` in JS
+treats it as **local time** — silently wrong by your viewer's UTC offset. Tell the parser
+it's UTC explicitly, e.g. append `Z` before parsing (`new Date(str + 'Z')`), or use
+`dayjs.utc(str)` / an equivalent library call.
+
+**The one field that flows the other direction** — the frontend *sending* a date/time to
+the backend — is `showDate`/`showTime` in `POST /organiser/events/{eventId}/shows` (§4). The
+backend's "is this show upcoming" logic (which drives both search/browse filtering and the
+`400` rejection of holding/waitlisting a past show, §5–7) compares those fields against
+`LocalDate.now()`/`LocalTime.now()` — UTC "now". **Convert the organiser's local input to
+UTC before sending it**, or a show meant for "7pm IST" gets stored and compared as if it
+meant "7pm UTC" (off by 5.5 hours — potentially flipping whether it even counts as
+upcoming). No other request body in this API currently accepts a date/time field.
 
 ---
 
@@ -278,6 +298,9 @@ used for this venue.
 ---
 
 ### `GET {BASE_URL}/organiser/events/{eventId}`
+Shows **all** of this event's shows, past and future — unlike the public detail view (§5),
+which only ever lists upcoming ones.
+
 **Response** `200 OK` — event object **with its shows populated**:
 ```json
 {
@@ -324,7 +347,7 @@ needed for either call).
 {
   "venueId": 1,
   "showDate": "2026-09-01",
-  "showTime": "19:00:00",
+  "showTime": "13:30:00",
   "categoryPrices": [
     { "categoryName": "Premium", "price": 500.00 },
     { "categoryName": "Standard", "price": 250.00 }
@@ -333,6 +356,12 @@ needed for either call).
 ```
 Every seat category that exists on the venue **must** have a price entry here, or the request
 fails with `400`.
+
+**`showDate`/`showTime` must be in UTC** (see §1.5) — convert the organiser's local input
+before sending. The example above is "7pm IST" sent as its UTC equivalent, `13:30:00`.
+Sending local wall-clock time as if it were UTC will make the show's actual scheduled time
+wrong by your organiser's UTC offset, and can incorrectly flip whether it counts as
+"upcoming" in search/browse and the hold/waitlist guards.
 
 **Response** `201 Created` — the show object shown above.
 
@@ -360,6 +389,11 @@ Owner-only.
 ---
 
 ## 5. Browse — `/events`, `/venues`, `/shows` (public, no auth required)
+
+**Only upcoming shows are ever visible through this section.** "Upcoming" is computed
+server-side against UTC "now" (§1.5) — an event whose every show has already happened won't
+appear in search results, and its detail view's `shows` array won't include those past
+shows either. Compare §4's organiser-only detail view, which sees the full history.
 
 ### `GET {BASE_URL}/venues`
 No params. **Response** `200 OK` — array (**not paginated**):
@@ -395,7 +429,8 @@ they've configured so far.
 All query params optional. `q` is a **fuzzy/typo-tolerant** search on the event title
 (Postgres trigram similarity) — `q=aveng` or even `q=avngers` will still match "Avengers".
 Results are ordered by match strength when `q` is given. `type`/`city` stay exact-match
-filters, combined with `q` via AND.
+filters, combined with `q` via AND. Only events with at least one upcoming show are
+returned (see the note at the top of this section).
 
 **Response** `200 OK` — paginated (§1.3); `content` items are event objects with
 `shows: []` (call the detail endpoint below for show/pricing info).
@@ -403,7 +438,8 @@ filters, combined with `q` via AND.
 ---
 
 ### `GET {BASE_URL}/events/{eventId}`
-**Response** `200 OK` — same full event-with-shows shape as §4's detail endpoint.
+**Response** `200 OK` — same shape as §4's organiser detail endpoint, **except** `shows`
+only lists upcoming ones (see the note at the top of this section).
 
 ---
 
@@ -491,8 +527,9 @@ QR a different way, as a CID attachment, since Gmail and most webmail clients st
 once the booking is `CONFIRMED`.
 
 **Errors**: `404` — show or one of the seats doesn't exist. `400` — a seat doesn't belong to
-this show. `409` — one or more seats are no longer available (someone else got there first, or
-mid-lock contention — **retry the request**).
+this show, **or the show has already happened** (checked server-side regardless of what the
+UI shows — see §5's note on upcoming-only browsing). `409` — one or more seats are no longer
+available (someone else got there first, or mid-lock contention — **retry the request**).
 
 ---
 
@@ -583,8 +620,9 @@ cover `quantity` — if there are, just book directly instead.
 }
 ```
 
-**Errors**: `400` — enough seats are actually already available for that quantity, or you're
-already waiting for this show+category. `404` — show or category not found.
+**Errors**: `400` — enough seats are actually already available for that quantity, you're
+already waiting for this show+category, **or the show has already happened**. `404` — show
+or category not found.
 
 ---
 
