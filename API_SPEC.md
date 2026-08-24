@@ -488,15 +488,20 @@ category's shared waitlist pool (see §7) — render it the same as unavailable,
 
 ### WebSocket: live seat map updates
 
-STOMP over SockJS. Connect to:
+**Plain STOMP over WebSocket — no SockJS.** (An earlier version of this API used SockJS;
+it's been dropped because its XHR-fallback transports send credentialed requests the server
+has no way to answer correctly, which browsers reject as a CORS error regardless of how the
+server's CORS config is set up. A raw WebSocket upgrade only needs a one-time `Origin`
+check, which we already allow from anywhere.) Connect directly to:
 
 ```
-{BASE_URL}/ws
+{BASE_URL_WS}/ws
 ```
 
-(e.g. `wss://ticketflow-api-r8oe.onrender.com/api/v1/ws` in production, `ws://localhost:8080/api/v1/ws`
-locally — SockJS handles the `ws`/`wss` upgrade itself, you just point it at the base HTTP(S) URL).
-No auth is required — seat availability is public data, same as the REST seatmap endpoint.
+where `{BASE_URL_WS}` is `{BASE_URL}` with `http`/`https` swapped for `ws`/`wss` — e.g.
+`wss://ticketflow-api-r8oe.onrender.com/api/v1/ws` in production,
+`ws://localhost:8080/api/v1/ws` locally. No auth is required — seat availability is public
+data, same as the REST seatmap endpoint.
 
 Subscribe to the topic for the show you're viewing:
 
@@ -516,15 +521,14 @@ There is no "unsubscribe payload" or heartbeat message beyond STOMP's own — ju
 as they happen (a hold placed, a hold expiring, a booking confirmed/cancelled, a waitlist
 offer created).
 
-**Client library**: `@stomp/stompjs` + `sockjs-client` is the standard pairing for a Spring
-STOMP/SockJS backend.
+**Client library**: `@stomp/stompjs` alone — no `sockjs-client` needed, it supports
+connecting to a raw WebSocket URL directly via `brokerURL`.
 
 ```js
-import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 
 const client = new Client({
-  webSocketFactory: () => new SockJS(`${BASE_URL}/ws`),
+  brokerURL: `${BASE_URL_WS}/ws`, // e.g. wss://ticketflow-api-r8oe.onrender.com/api/v1/ws
   onConnect: () => {
     client.subscribe(`/topic/shows/${showId}/seatmap`, (message) => {
       const { showSeatId, status } = JSON.parse(message.body);
@@ -534,6 +538,9 @@ const client = new Client({
 });
 client.activate();
 ```
+
+If you already added `sockjs-client` for this, it can be removed — it's not used anywhere
+in this setup.
 
 **Reconnection**: if the socket drops and reconnects, re-fetch `GET /shows/{showId}/seatmap`
 before resubscribing — you may have missed deltas while disconnected, and the REST call gives

@@ -21,19 +21,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // under the app's context-path, e.g. /api/v1/ws — SockJS fallback for networks that
-        // block raw WebSocket upgrades
+        // Plain WebSocket, no SockJS. SockJS's XHR-streaming/XHR-polling fallback transports
+        // send their requests with withCredentials=true regardless of the server-side
+        // cookie_needed flag (confirmed against this exact deployment — the CORS origin
+        // response was correct, but browsers still rejected it since there's no server-side
+        // way to add Access-Control-Allow-Credentials for SockJS's internal /info and
+        // transport endpoints). We don't need SockJS's old-browser/restrictive-proxy fallback
+        // in a modern web app, so the simplest fix is to not use it: a raw WebSocket upgrade
+        // only does a one-time Origin check against setAllowedOriginPatterns below, with none
+        // of SockJS's credentialed-XHR complexity.
+        //
+        // Under the app's context-path, e.g. wss://host/api/v1/ws.
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS()
-                // We're fully stateless (JWT, no server-side sessions, no sticky-session
-                // load balancing) — there's no reason for SockJS to want a session-affinity
-                // cookie. Leaving this at its default (true) makes SockJS's XHR-streaming/
-                // XHR-polling fallback transports send requests with withCredentials=true,
-                // which browsers reject outright unless the server also sends
-                // Access-Control-Allow-Credentials: true (it doesn't) — surfaces in the
-                // browser as a CORS error even though the actual CORS origin config is fine.
-                .setSessionCookieNeeded(false);
+                .setAllowedOriginPatterns("*");
     }
 
     @Override

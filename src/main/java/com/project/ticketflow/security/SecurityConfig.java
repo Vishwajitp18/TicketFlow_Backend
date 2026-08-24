@@ -45,8 +45,8 @@ public class SecurityConfig {
                         .requestMatchers("/venues/**").permitAll()
                         .requestMatchers("/shows/*/seatmap").permitAll()
                         // seat availability is public data (same as the seatmap REST
-                        // endpoint above) — this is the SockJS/STOMP handshake + fallback
-                        // transport paths for the live seatmap feed, not an app endpoint
+                        // endpoint above) — this is the WebSocket handshake path for the
+                        // live seatmap feed, not an app endpoint
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/admin/**").hasRole(ADMIN.name())
                         .requestMatchers("/organiser/**").hasRole(ORGANISER.name())

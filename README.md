@@ -11,8 +11,8 @@ mechanics, and `API_SPEC.md` for the full endpoint reference.
 
 Java 21, Spring Boot 3.5.7, Spring Security (JWT), Spring Data JPA, PostgreSQL, ShedLock
 (distributed cron locking), Brevo (transactional email), Thymeleaf (email templates), ZXing
-(QR code generation), STOMP over SockJS (live seat map — see below). **No Redis, no message
-broker** — see "Why no Redis/RabbitMQ?" below.
+(QR code generation), plain STOMP over WebSocket, no SockJS (live seat map — see below).
+**No Redis, no message broker** — see "Why no Redis/RabbitMQ?" below.
 
 ## Setup
 
@@ -117,10 +117,11 @@ own view above, which does see them, for management/reporting).
 | GET | `/shows/{showId}/seatmap` | Per-seat status (`AVAILABLE`/`HELD`/`RESERVED`/`OFFERED`/`BOOKED`) — call **once** for the initial snapshot, then use the WebSocket feed below for live updates |
 
 ### Live seat map — WebSocket (no auth, public)
-STOMP over SockJS at `{BASE_URL}/ws`. Subscribe to `/topic/shows/{showId}/seatmap` and apply
-each incoming `{ "showSeatId": ..., "status": ... }` delta on top of the initial REST
-snapshot — this **replaces polling** the seatmap endpoint above. Full client example,
-reconnection guidance, and exact message shape in `API_SPEC.md` §5.
+Plain STOMP over WebSocket (no SockJS — see `API_SPEC.md` §5 for why) at `wss://.../api/v1/ws`
+(`ws://` locally). Subscribe to `/topic/shows/{showId}/seatmap` and apply each incoming
+`{ "showSeatId": ..., "status": ... }` delta on top of the initial REST snapshot — this
+**replaces polling** the seatmap endpoint above. Full client example, reconnection guidance,
+and exact message shape in `API_SPEC.md` §5.
 
 ### Bookings — `/bookings` (CUSTOMER)
 | Method | Path | Description |
