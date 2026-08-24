@@ -3,8 +3,11 @@
 > **Base URL** — edit this one line, every path below is relative to it.
 >
 > ```
-> BASE_URL = http://localhost:8080/api/v1
+> BASE_URL = https://ticketflow-api-r8oe.onrender.com/api/v1
 > ```
+>
+> Local dev: `http://localhost:8080/api/v1`. Live frontend consuming this API:
+> https://ticketflow-ebon.vercel.app/ ([repo](https://github.com/Vishwajitp18/TicketFlow_Website)).
 >
 > Example: `POST {BASE_URL}/auth/login`
 

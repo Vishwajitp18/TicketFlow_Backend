@@ -4,8 +4,18 @@ A ticket booking backend for movies and concerts: venues with visual seat maps, 
 per-category pricing, seat holds with a configurable TTL, a waitlist with automatic seat
 reassignment on cancellation, and QR-code ticket emails.
 
-See `SYSTEM_DESIGN.md` for the design rationale behind the concurrency and waitlist
-mechanics, and `API_SPEC.md` for the full endpoint reference.
+## Live
+
+| | |
+|---|---|
+| **App** | https://ticketflow-ebon.vercel.app/ |
+| **Frontend repo** | https://github.com/Vishwajitp18/TicketFlow_Website |
+| **Backend API** (this repo) | https://ticketflow-api-r8oe.onrender.com/api/v1 |
+| **System design write-up** | [`SYSTEM_DESIGN.md`](./SYSTEM_DESIGN.md) — concurrency, seat-hold TTL, waitlist auto-assignment |
+| **Full API reference** | [`API_SPEC.md`](./API_SPEC.md) — every endpoint, request/response shapes, WebSocket contract |
+
+The backend is a free-tier Render instance — the first request after a period of inactivity
+can take 30-60s to wake up.
 
 ## Tech stack
 
@@ -48,8 +58,6 @@ docker run -p 8080:8080 --env-file .env -e SPRING_PROFILES_ACTIVE=prod ticketflo
 ```
 
 ### Deploy
-
-**Live**: `https://ticketflow-api-r8oe.onrender.com/api/v1`
 
 `render.yaml` deploys the API as a Docker web service on [Render](https://render.com),
 region `singapore`, against an **external Supabase Postgres** (not a Render-managed
@@ -349,7 +357,7 @@ See `SYSTEM_DESIGN.md` for the full write-up. Short version:
 | Organiser registers/logs in, creates events with venue/date/time/per-category pricing | ✅ `/auth/register`, `/organiser/events`, `/organiser/events/{id}/shows` |
 | Customer registers/logs in, browses/filters events, views a live seat map | ✅ `/auth/register`, `GET /events` (with fuzzy `q`, `type`, `city`), `GET /shows/{id}/seatmap` + WebSocket push for live status |
 | Seat hold with configurable TTL; held seats shown unavailable | ✅ `POST /bookings/hold`, `BOOKING_HOLD_TTL_MINUTES` |
-| Auto-release on checkout abandonment; seat map updates | ✅ hold-expiry cron + polling |
+| Auto-release on checkout abandonment; seat map updates | ✅ hold-expiry cron + WebSocket push |
 | Concurrency: two customers can't hold/book the same seat | ✅ `SELECT ... FOR UPDATE`, id-ordered, see `SYSTEM_DESIGN.md` |
 | Confirmed booking → email with QR encoding the booking reference | ✅ `POST /bookings/{id}/confirm`, CID-embedded QR (Brevo) |
 | Waitlist per seat category when sold out | ✅ `POST /waitlist` — quantity-based (see below), not just single-seat |
@@ -369,5 +377,5 @@ together, never offered fewer) rather than one seat at a time — see `SYSTEM_DE
   not edited or deactivated after the fact (the `active` flag exists in the schema for this,
   just isn't wired to an endpoint yet). A contained, known gap, not an oversight.
 - **No frontend in this repository** — this is the backend API; `API_SPEC.md` is the contract
-  a frontend is built against (in progress separately, to be deployed once this backend and
-  its docs are finalized). Its seat-map UI should use the WebSocket feed above, not polling.
+  the frontend ([live](https://ticketflow-ebon.vercel.app/), [repo](https://github.com/Vishwajitp18/TicketFlow_Website))
+  is built against. Its seat-map UI uses the WebSocket feed above, not polling.

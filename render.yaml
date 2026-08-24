@@ -37,8 +37,11 @@ services:
         value: noreply@livo.works
       - key: EMAIL_FROM_NAME
         value: Livo
+      # Frontend base URL (not this API's own URL) — the waitlist-offer "accept" link in
+      # emails points here, at a frontend route that then calls this API's
+      # POST /waitlist/offers/{token}/accept on the customer's behalf.
       - key: APP_BASE_URL
-        value: https://ticketflow-api-r8oe.onrender.com/api/v1
+        value: https://ticketflow-ebon.vercel.app
       - key: BOOKING_HOLD_TTL_MINUTES
         value: "10"
       - key: WAITLIST_OFFER_TTL_MINUTES
