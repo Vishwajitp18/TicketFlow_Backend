@@ -2,6 +2,7 @@ services:
   - type: web
     name: ticketflow-api
     runtime: docker
+    region: singapore
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /api/v1/actuator/health
