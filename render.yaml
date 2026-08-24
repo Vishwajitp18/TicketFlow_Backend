@@ -19,12 +19,10 @@ services:
         sync: false
       - key: DATABASE_PASSWORD
         sync: false
-      # First deploy only: the Supabase DB starts empty and application-prod.properties
-      # normally runs with ddl-auto=validate (expects the schema to already exist). Set this
-      # to "update" for the first boot so Hibernate creates the schema, confirm the app comes
-      # up and tables exist, then remove this override (falls back to the safer "validate").
-      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
-        value: update
+      # No SPRING_JPA_HIBERNATE_DDL_AUTO override here anymore — the schema was already
+      # created against this same Supabase DB during the first deploy, so this service
+      # (recreated in a new region, pointed at the same DB) can go straight to the safer
+      # default from application-prod.properties: ddl-auto=validate.
       - key: JWT_ACCESS_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
