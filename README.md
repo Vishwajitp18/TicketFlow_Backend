@@ -11,7 +11,8 @@ mechanics, and `API_SPEC.md` for the full endpoint reference.
 
 Java 21, Spring Boot 3.5.7, Spring Security (JWT), Spring Data JPA, PostgreSQL, ShedLock
 (distributed cron locking), Brevo (transactional email), Thymeleaf (email templates), ZXing
-(QR code generation). **No Redis, no message broker** — see "Why no Redis/RabbitMQ?" below.
+(QR code generation), STOMP over SockJS (live seat map — see below). **No Redis, no message
+broker** — see "Why no Redis/RabbitMQ?" below.
 
 ## Setup
 
@@ -113,7 +114,13 @@ own view above, which does see them, for management/reporting).
 | GET | `/venues` | List venues (so an organiser/frontend can pick one for a new show) |
 | GET | `/venues/{venueId}` | Get a venue |
 | GET | `/venues/{venueId}/seats` | The venue's static seat layout (row/number/category) |
-| GET | `/shows/{showId}/seatmap` | Live per-seat status (`AVAILABLE`/`HELD`/`RESERVED`/`OFFERED`/`BOOKED`) — **poll this** to keep a seat map UI in sync |
+| GET | `/shows/{showId}/seatmap` | Per-seat status (`AVAILABLE`/`HELD`/`RESERVED`/`OFFERED`/`BOOKED`) — call **once** for the initial snapshot, then use the WebSocket feed below for live updates |
+
+### Live seat map — WebSocket (no auth, public)
+STOMP over SockJS at `{BASE_URL}/ws`. Subscribe to `/topic/shows/{showId}/seatmap` and apply
+each incoming `{ "showSeatId": ..., "status": ... }` delta on top of the initial REST
+snapshot — this **replaces polling** the seatmap endpoint above. Full client example,
+reconnection guidance, and exact message shape in `API_SPEC.md` §5.
 
 ### Bookings — `/bookings` (CUSTOMER)
 | Method | Path | Description |
@@ -339,7 +346,7 @@ See `SYSTEM_DESIGN.md` for the full write-up. Short version:
 |---|---|
 | Admin creates venues with seat layout + categories | ✅ `POST /admin/venues`, `POST /admin/venues/{id}/seats/bulk` |
 | Organiser registers/logs in, creates events with venue/date/time/per-category pricing | ✅ `/auth/register`, `/organiser/events`, `/organiser/events/{id}/shows` |
-| Customer registers/logs in, browses/filters events, views a live seat map | ✅ `/auth/register`, `GET /events` (with fuzzy `q`, `type`, `city`), `GET /shows/{id}/seatmap` |
+| Customer registers/logs in, browses/filters events, views a live seat map | ✅ `/auth/register`, `GET /events` (with fuzzy `q`, `type`, `city`), `GET /shows/{id}/seatmap` + WebSocket push for live status |
 | Seat hold with configurable TTL; held seats shown unavailable | ✅ `POST /bookings/hold`, `BOOKING_HOLD_TTL_MINUTES` |
 | Auto-release on checkout abandonment; seat map updates | ✅ hold-expiry cron + polling |
 | Concurrency: two customers can't hold/book the same seat | ✅ `SELECT ... FOR UPDATE`, id-ordered, see `SYSTEM_DESIGN.md` |
@@ -362,4 +369,4 @@ together, never offered fewer) rather than one seat at a time — see `SYSTEM_DE
   just isn't wired to an endpoint yet). A contained, known gap, not an oversight.
 - **No frontend in this repository** — this is the backend API; `API_SPEC.md` is the contract
   a frontend is built against (in progress separately, to be deployed once this backend and
-  its docs are finalized). A seat-map UI would poll `GET /shows/{id}/seatmap` on an interval.
+  its docs are finalized). Its seat-map UI should use the WebSocket feed above, not polling.

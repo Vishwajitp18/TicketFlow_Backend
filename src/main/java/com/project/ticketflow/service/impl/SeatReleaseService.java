@@ -12,6 +12,7 @@ import com.project.ticketflow.repository.SeatOfferRepository;
 import com.project.ticketflow.repository.ShowSeatRepository;
 import com.project.ticketflow.repository.WaitlistEntryRepository;
 import com.project.ticketflow.service.event.SeatOfferCreatedEvent;
+import com.project.ticketflow.service.event.SeatStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -73,6 +74,7 @@ public class SeatReleaseService {
             seat.setHeldByBookingId(null);
             seat.setHoldExpiresAt(null);
             showSeatRepository.save(seat);
+            eventPublisher.publishEvent(new SeatStatusChangedEvent(show.getId(), seat.getId(), SeatStatus.AVAILABLE.name()));
             return;
         }
 
@@ -80,6 +82,7 @@ public class SeatReleaseService {
         seat.setHeldByBookingId(null);
         seat.setHoldExpiresAt(null);
         showSeatRepository.save(seat);
+        eventPublisher.publishEvent(new SeatStatusChangedEvent(show.getId(), seat.getId(), SeatStatus.RESERVED.name()));
 
         tryFulfillQueue(show, category);
     }
@@ -123,6 +126,7 @@ public class SeatReleaseService {
             seat.setStatus(SeatStatus.OFFERED);
             seat.setHoldExpiresAt(expiresAt);
             showSeatRepository.save(seat);
+            eventPublisher.publishEvent(new SeatStatusChangedEvent(seat.getShow().getId(), seat.getId(), SeatStatus.OFFERED.name()));
 
             offers.add(SeatOffer.builder()
                     .waitlistEntry(entry)
@@ -154,6 +158,9 @@ public class SeatReleaseService {
             seat.setStatus(SeatStatus.AVAILABLE);
         }
         showSeatRepository.saveAll(pool);
+        for (ShowSeat seat : pool) {
+            eventPublisher.publishEvent(new SeatStatusChangedEvent(show.getId(), seat.getId(), SeatStatus.AVAILABLE.name()));
+        }
         log.info("Drained {} unclaimed pooled seat(s) back to AVAILABLE for show {} category {} (queue empty)",
                 pool.size(), show.getId(), category.getId());
     }

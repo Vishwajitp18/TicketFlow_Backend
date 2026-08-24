@@ -18,6 +18,7 @@ import com.project.ticketflow.repository.*;
 import com.project.ticketflow.security.SecurityHelper;
 import com.project.ticketflow.service.BookingService;
 import com.project.ticketflow.service.event.BookingConfirmedEvent;
+import com.project.ticketflow.service.event.SeatStatusChangedEvent;
 import com.project.ticketflow.util.QrCodeGenerator;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -124,6 +125,9 @@ public class BookingServiceImpl implements BookingService {
             seat.setHoldExpiresAt(null);
         }
         showSeatRepository.saveAll(seats);
+        for (ShowSeat seat : seats) {
+            eventPublisher.publishEvent(new SeatStatusChangedEvent(booking.getShow().getId(), seat.getId(), SeatStatus.BOOKED.name()));
+        }
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setHoldExpiresAt(null);

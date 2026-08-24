@@ -6,8 +6,10 @@ import com.project.ticketflow.enums.SeatStatus;
 import com.project.ticketflow.repository.BookingRepository;
 import com.project.ticketflow.repository.BookingSeatRepository;
 import com.project.ticketflow.repository.ShowSeatRepository;
+import com.project.ticketflow.service.event.SeatStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class BookingHoldFactory {
     private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
     private final ShowSeatRepository showSeatRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Booking createHeldBooking(User customer, Show show, List<ShowSeat> lockedSeats) {
@@ -53,6 +56,10 @@ public class BookingHoldFactory {
             seat.setHoldExpiresAt(savedBooking.getHoldExpiresAt());
         }
         showSeatRepository.saveAll(lockedSeats);
+
+        for (ShowSeat seat : lockedSeats) {
+            eventPublisher.publishEvent(new SeatStatusChangedEvent(show.getId(), seat.getId(), SeatStatus.HELD.name()));
+        }
 
         List<BookingSeat> bookingSeats = lockedSeats.stream()
                 .map(seat -> BookingSeat.builder()

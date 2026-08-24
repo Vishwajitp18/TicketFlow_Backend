@@ -444,7 +444,9 @@ only lists upcoming ones (see the note at the top of this section).
 ---
 
 ### `GET {BASE_URL}/shows/{showId}/seatmap`
-**Poll this on an interval to keep a seat-map UI live** (no WebSocket in this version).
+**Call this once** for the initial snapshot when a seat-map screen loads, then switch to the
+WebSocket feed below for live updates — **do not poll this on an interval**, that's been
+replaced.
 
 **Response** `200 OK`
 ```json
@@ -481,6 +483,62 @@ category's shared waitlist pool (see §7) — render it the same as unavailable,
 `categoryId` (not `categoryName`) when calling `/waitlist`.
 
 **Errors**: `404` — show not found.
+
+---
+
+### WebSocket: live seat map updates
+
+STOMP over SockJS. Connect to:
+
+```
+{BASE_URL}/ws
+```
+
+(e.g. `wss://ticketflow-api-r8oe.onrender.com/api/v1/ws` in production, `ws://localhost:8080/api/v1/ws`
+locally — SockJS handles the `ws`/`wss` upgrade itself, you just point it at the base HTTP(S) URL).
+No auth is required — seat availability is public data, same as the REST seatmap endpoint.
+
+Subscribe to the topic for the show you're viewing:
+
+```
+/topic/shows/{showId}/seatmap
+```
+
+Each message is a **single-seat delta**, not a full snapshot — apply it on top of the state
+you already have from the initial `GET /shows/{showId}/seatmap` call:
+
+```json
+{ "showSeatId": 502, "status": "HELD" }
+```
+
+`status` is the same enum as the REST response (`AVAILABLE`/`HELD`/`RESERVED`/`OFFERED`/`BOOKED`).
+There is no "unsubscribe payload" or heartbeat message beyond STOMP's own — just seat deltas
+as they happen (a hold placed, a hold expiring, a booking confirmed/cancelled, a waitlist
+offer created).
+
+**Client library**: `@stomp/stompjs` + `sockjs-client` is the standard pairing for a Spring
+STOMP/SockJS backend.
+
+```js
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
+
+const client = new Client({
+  webSocketFactory: () => new SockJS(`${BASE_URL}/ws`),
+  onConnect: () => {
+    client.subscribe(`/topic/shows/${showId}/seatmap`, (message) => {
+      const { showSeatId, status } = JSON.parse(message.body);
+      // merge into your local seat-map state by showSeatId
+    });
+  },
+});
+client.activate();
+```
+
+**Reconnection**: if the socket drops and reconnects, re-fetch `GET /shows/{showId}/seatmap`
+before resubscribing — you may have missed deltas while disconnected, and the REST call gives
+you a correct full snapshot to resume from. Don't assume your locally-held state is still
+accurate after any disconnect.
 
 ---
 

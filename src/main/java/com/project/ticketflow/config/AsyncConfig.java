@@ -8,6 +8,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class AsyncConfig {
 
+    // Despite the name, this backs every lightweight @Async(AFTER_COMMIT) side effect in the
+    // app (email sending, WebSocket seatmap broadcasts) — one small shared pool instead of a
+    // dedicated one per concern, deliberately, given the 512MB memory budget in production.
     @Bean(name = "emailExecutor")
     public TaskExecutor emailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

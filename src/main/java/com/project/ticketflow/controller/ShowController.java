@@ -13,7 +13,9 @@ public class ShowController {
 
     private final ShowService showService;
 
-    // polling target for the customer's live seat map
+    // initial snapshot for the seat map — the client is expected to call this once on page
+    // load, then subscribe to /topic/shows/{showId}/seatmap over WebSocket (see
+    // WebSocketConfig) for live deltas instead of re-polling this endpoint
     @GetMapping("/{showId}/seatmap")
     public ResponseEntity<SeatMapResponseDto> getSeatMap(@PathVariable Long showId) {
         return ResponseEntity.ok(showService.getSeatMap(showId));
