@@ -36,7 +36,7 @@ services:
       - key: EMAIL_FROM_NAME
         value: TicketFlow
       - key: APP_BASE_URL
-        value: https://ticketflow-api.onrender.com/api/v1
+        value: https://ticketflow-api-r8oe.onrender.com/api/v1
       - key: BOOKING_HOLD_TTL_MINUTES
         value: "10"
       - key: WAITLIST_OFFER_TTL_MINUTES
