@@ -29,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -61,6 +63,10 @@ public class WaitlistServiceImpl implements WaitlistService {
                 .orElseThrow(() -> new ResourceNotFoundException("Show not found with id: " + requestDto.getShowId()));
         SeatCategory category = seatCategoryRepository.findById(requestDto.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDto.getCategoryId()));
+
+        if (hasShowPassed(show)) {
+            throw new BadRequestException("This show has already taken place — the waitlist is closed");
+        }
 
         long available = showSeatRepository.countByShowIdAndCategoryIdAndStatus(
                 show.getId(), category.getId(), SeatStatus.AVAILABLE);
@@ -193,6 +199,13 @@ public class WaitlistServiceImpl implements WaitlistService {
     private AuthenticatedUser currentUser() {
         return securityHelper.getCurrentAuthenticatedUser()
                 .orElseThrow(() -> new AccessDeniedException("Cannot identify the authenticated user"));
+    }
+
+    private boolean hasShowPassed(Show show) {
+        LocalDate today = LocalDate.now();
+        LocalTime nowTime = LocalTime.now();
+        return show.getShowDate().isBefore(today)
+                || (show.getShowDate().isEqual(today) && show.getShowTime().isBefore(nowTime));
     }
 
     private WaitlistEntryResponseDto toDto(WaitlistEntry entry) {

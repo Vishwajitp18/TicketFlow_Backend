@@ -35,7 +35,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,6 +69,10 @@ public class BookingServiceImpl implements BookingService {
         log.info("Holding {} seat(s) for show {}", requestDto.getShowSeatIds().size(), requestDto.getShowId());
         Show show = showRepository.findById(requestDto.getShowId())
                 .orElseThrow(() -> new ResourceNotFoundException("Show not found with id: " + requestDto.getShowId()));
+
+        if (hasShowPassed(show)) {
+            throw new BadRequestException("This show has already taken place — seats can no longer be held");
+        }
 
         List<ShowSeat> lockedSeats;
         try {
@@ -297,6 +303,13 @@ public class BookingServiceImpl implements BookingService {
 
     private String generateBookingReference() {
         return "TKT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private boolean hasShowPassed(Show show) {
+        LocalDate today = LocalDate.now();
+        LocalTime nowTime = LocalTime.now();
+        return show.getShowDate().isBefore(today)
+                || (show.getShowDate().isEqual(today) && show.getShowTime().isBefore(nowTime));
     }
 
     private AuthenticatedUser currentUser() {

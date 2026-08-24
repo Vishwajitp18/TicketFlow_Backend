@@ -8,7 +8,9 @@ public interface EventService {
 
     EventResponseDto createEvent(EventRequestDto requestDto);
 
-    EventResponseDto getEvent(Long eventId);
+    // upcomingOnly=true (public browse) hides shows that have already happened; the
+    // organiser's own view passes false to still see their event's full show history
+    EventResponseDto getEvent(Long eventId, boolean upcomingOnly);
 
     Page<EventResponseDto> searchEvents(String type, String city, String query, Pageable pageable);
 

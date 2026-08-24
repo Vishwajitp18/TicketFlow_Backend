@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,9 +69,11 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
-    public EventResponseDto getEvent(Long eventId) {
+    public EventResponseDto getEvent(Long eventId, boolean upcomingOnly) {
         Event event = getEventOrThrow(eventId);
-        List<Show> shows = showRepository.findByEventOrderByShowDateAscShowTimeAsc(event);
+        List<Show> shows = upcomingOnly
+                ? showRepository.findUpcomingByEvent(event, LocalDate.now(), LocalTime.now())
+                : showRepository.findByEventOrderByShowDateAscShowTimeAsc(event);
         List<ShowResponseDto> showDtos = shows.stream().map(this::toShowDto).toList();
         return toDto(event, showDtos);
     }
@@ -86,7 +90,7 @@ public class EventServiceImpl implements EventService {
             }
         }
         String trimmedQuery = (query == null || query.isBlank()) ? null : query.trim();
-        return eventRepository.searchEvents(eventType, city, trimmedQuery, pageable)
+        return eventRepository.searchEvents(eventType, city, trimmedQuery, LocalDate.now(), LocalTime.now(), pageable)
                 .map(event -> toDto(event, List.of()));
     }
 

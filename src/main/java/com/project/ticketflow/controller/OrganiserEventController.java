@@ -33,7 +33,8 @@ public class OrganiserEventController {
 
     @GetMapping("/{eventId}")
     public ResponseEntity<EventResponseDto> getEvent(@PathVariable Long eventId) {
-        return ResponseEntity.ok(eventService.getEvent(eventId));
+        // false: an organiser managing their own event should still see past shows too
+        return ResponseEntity.ok(eventService.getEvent(eventId, false));
     }
 
     @PostMapping("/{eventId}/shows")

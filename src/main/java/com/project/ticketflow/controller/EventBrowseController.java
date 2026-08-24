@@ -29,6 +29,6 @@ public class EventBrowseController {
 
     @GetMapping("/{eventId}")
     public ResponseEntity<EventResponseDto> getEvent(@PathVariable Long eventId) {
-        return ResponseEntity.ok(eventService.getEvent(eventId));
+        return ResponseEntity.ok(eventService.getEvent(eventId, true));
     }
 }
