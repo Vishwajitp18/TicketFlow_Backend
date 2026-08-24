@@ -17,6 +17,19 @@ reassignment on cancellation, and QR-code ticket emails.
 The backend is a free-tier Render instance — the first request after a period of inactivity
 can take 30-60s to wake up.
 
+### Test admin account
+
+ADMIN is seeded once on startup and isn't self-registerable (see [Roles](#roles)) — use this
+account to log in as ADMIN and exercise venue creation:
+
+```
+email:    admin@ticketflow.com
+password: admin@12345
+```
+
+`POST /auth/login` with these returns an ADMIN-scoped access token. CUSTOMER and ORGANISER
+accounts can be created freely via `POST /auth/register`.
+
 ## Tech stack
 
 Java 21, Spring Boot 3.5.7, Spring Security (JWT), Spring Data JPA, PostgreSQL, ShedLock
