@@ -155,6 +155,9 @@ public class BookingServiceImpl implements BookingService {
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new BadRequestException("Only a confirmed booking can be cancelled");
         }
+        if (hasShowPassed(booking.getShow())) {
+            throw new BadRequestException("Cannot cancel a booking for a show that has already started");
+        }
 
         booking.setStatus(BookingStatus.CANCELLED);
         Booking savedBooking = bookingRepository.save(booking);

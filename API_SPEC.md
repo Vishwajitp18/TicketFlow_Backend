@@ -624,12 +624,13 @@ booking isn't in `HELD` status, or the hold already expired (select seats again)
 ---
 
 ### `POST {BASE_URL}/bookings/{bookingId}/cancel`
-No body. Only a `CONFIRMED` booking can be cancelled. Frees the seat(s) — which either makes
-them `AVAILABLE` again or triggers a waitlist offer, see §7.
+No body. Only a `CONFIRMED` booking can be cancelled, and only while the show hasn't started
+yet — once the show's date/time has passed, cancellation is rejected. Frees the seat(s) —
+which either makes them `AVAILABLE` again or triggers a waitlist offer, see §7.
 
 **Response** `200 OK` — booking object with `"status": "CANCELLED"`.
 
-**Errors**: `404`, `403`, `400` (not currently confirmed).
+**Errors**: `404`, `403`, `400` (not currently confirmed, or the show has already started).
 
 ---
 

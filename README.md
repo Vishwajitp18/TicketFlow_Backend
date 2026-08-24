@@ -136,7 +136,7 @@ and exact message shape in `API_SPEC.md` §5.
 |---|---|---|
 | POST | `/bookings/hold` | Hold seats (`showId`, `showSeatIds[]`) — starts the TTL countdown. Rejects with `400` if the show has already happened |
 | POST | `/bookings/{bookingId}/confirm` | Confirm with customer details — sends the QR ticket email |
-| POST | `/bookings/{bookingId}/cancel` | Cancel a confirmed booking — frees the seat(s), triggers waitlist offers |
+| POST | `/bookings/{bookingId}/cancel` | Cancel a confirmed booking — frees the seat(s), triggers waitlist offers. Rejects with `400` once the show has already started |
 | GET | `/bookings?page=&size=` | My booking history — only `CONFIRMED`/`CANCELLED`, no `HELD`/`EXPIRED` noise |
 | GET | `/bookings/{bookingId}` | Booking detail (owner or the show's organiser) |
 
