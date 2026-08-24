@@ -25,7 +25,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // block raw WebSocket upgrades
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                // We're fully stateless (JWT, no server-side sessions, no sticky-session
+                // load balancing) — there's no reason for SockJS to want a session-affinity
+                // cookie. Leaving this at its default (true) makes SockJS's XHR-streaming/
+                // XHR-polling fallback transports send requests with withCredentials=true,
+                // which browsers reject outright unless the server also sends
+                // Access-Control-Allow-Credentials: true (it doesn't) — surfaces in the
+                // browser as a CORS error even though the actual CORS origin config is fine.
+                .setSessionCookieNeeded(false);
     }
 
     @Override
