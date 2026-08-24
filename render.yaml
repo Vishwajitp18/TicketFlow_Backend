@@ -31,10 +31,12 @@ services:
         sync: false
       - key: BREVO_API_KEY
         sync: false
+      # Reusing an existing verified Brevo sender identity rather than a new,
+      # unverified ticketflow.app one.
       - key: EMAIL_FROM_ADDRESS
-        value: noreply@ticketflow.app
+        value: noreply@livo.works
       - key: EMAIL_FROM_NAME
-        value: TicketFlow
+        value: Livo
       - key: APP_BASE_URL
         value: https://ticketflow-api-r8oe.onrender.com/api/v1
       - key: BOOKING_HOLD_TTL_MINUTES
